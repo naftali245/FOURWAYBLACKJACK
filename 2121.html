@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Four Way Blackjack</title>
+    <style>
+        /* --- GENERAL STYLES --- */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #004d40; /* Dark Teal Background (Fallback) */
+            color: #fff;
+            text-align: center;
+            padding: 0; /* Removed padding */
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #game-container {
+            max-width: 1400px; 
+            width: 95%;
+            height: 95vh; /* Take up most of the viewport height */
+            margin: 0 auto;
+            
+            /* NEW: Blue/Teal Casino Background */
+            background-image: radial-gradient(circle at center, #008CBA 0%, #004D40 100%); 
+            
+            border: 10px solid #FFD700; /* Gold border */
+            border-radius: 25px;
+            padding: 30px 20px;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+            position: relative; 
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            color: #ffeb3b; 
+            margin-bottom: 20px;
+        }
+
+        /* --- WIN/LOSE Message Overlay --- */
+        #game-result-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 5em; /* Bigger */
+            font-weight: 900;
+            color: #FFD700; 
+            text-shadow: 
+                -3px -3px 0 #8B0000,
+                 3px -3px 0 #8B0000,
+                -3px 3px 0 #8B0000,
+                 3px 3px 0 #8B0000,
+                 0 0 10px rgba(255, 255, 255, 0.7); /* Red outline, white glow */
+            z-index: 50;
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none; 
+        }
+        #game-result-message.visible {
+            opacity: 1;
+        }
+
+
+        /* --- Stats and Message Area --- */
+        #stats-bar-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 90%;
+        }
+        #stats-bar {
+            flex-grow: 1;
+            display: flex;
+            justify-content: space-around;
+            background-color: rgba(0, 0, 0, 0.3); /* Semi-transparent black */
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ffeb3b;
+            margin-right: 15px;
+        }
+        .stat-box {
+            font-size: 1.4em; /* Bigger stats */
+            font-weight: bold;
+        }
+        #message-area {
+            min-height: 40px;
+            color: #ffc107; 
+            font-size: 1.8em; 
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+            width: 100%;
+        }
+        #mute-button {
+            background-color: #f44336;
+            color: white;
+            border: 2px solid #ffeb3b;
+            border-radius: 5px;
+            padding: 8px 15px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* --- Card Areas --- */
+        .hand-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .card-slots {
+            display: flex;
+            justify-content: center;
+            gap: 20px; /* Wider gap */
+            min-height: 250px; /* Increased min height */
+            margin-top: 15px;
+            position: relative; 
+        }
+
+        .card-slot {
+            position: relative;
+            width: 140px; /* Significantly Bigger Cards */
+            height: 200px;
+            background-color: #fff;
+            border: 4px solid #000;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.6);
+            font-size: 0; 
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat; 
+        }
+        
+        /* Highlight the second card slot for visual reference */
+        #player-cards .card-slot:nth-child(2) {
+             border: 3px solid #ffc107; 
+        }
+
+        /* --- Custom Card Back with Logo --- */
+        .card-back-logo {
+            /* *** Base64 Placeholder *** */
+            background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJgAAACGAQMAAAC/t8VDAAAABlBMVEUAAAD///+l2Z/dAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAAVElEQVR4nO3BMQEAAADCoPVPbQhfoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMBwF4oAAe+e8JkAAAAASUVORK5CYII=');
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-color: #0d47a1; /* Deep Blue background to match theme */
+            border: 3px solid gold !important; 
+        }
+        
+        /* --- Control Buttons (Combined Area) --- */
+        #control-buttons {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px; /* Increased gap */
+            min-height: 80px;
+            padding-bottom: 10px;
+        }
+        
+        .game-buttons-group {
+             display: flex;
+             gap: 15px;
+        }
+
+        .game-button {
+            padding: 12px 30px;
+            font-size: 1.4em;
+            border-width: 4px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        /* --- Modifier Icons --- */
+        #modifier-icons-wrapper {
+            display: flex;
+            gap: 15px;
+            margin-right: 30px;
+        }
+
+        .mod-icon {
+            width: 65px; /* Bigger Icons */
+            height: 65px; 
+            border-width: 3px;
+            font-weight: bold;
+            line-height: 60px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* Specific Icon Colors and Symbols */
+        .mod-icon[data-action="add"] { 
+            background-color: #F44336; /* RED (was blue) */
+            font-size: 2.5em;
+            line-height: 50px;
+        }
+        .mod-icon[data-action="subtract"] { 
+            background-color: #9c27b0; /* Purple -1 (NEW) */
+            font-size: 2.5em;
+            line-height: 50px;
+        }
+        .mod-icon[data-action="multiply"] { 
+            background-color: #F44336; /* RED X2 (was red, consistent now) */
+            font-size: 2.0em;
+        } 
+        .mod-icon[data-action="divide"] { 
+            background-color: #FFC107; /* Yellow /2 */
+            color: #333; 
+            font-size: 2.0em;
+        }
+
+        .mod-icon:hover:not(:disabled) { opacity: 0.8; }
+        .mod-icon:disabled { opacity: 0.4; background-color: #555; border-color: #777; }
+
+        /* ======================================================= */
+        /* --- MOBILE RESPONSIVENESS (Max Width 600px) --- */
+        /* ======================================================= */
+        @media (max-width: 600px) {
+            #game-container {
+                padding: 10px;
+                border: 4px solid #3e2723;
+                height: auto;
+                min-height: 95vh;
+            }
+            
+            h1 { font-size: 1.6em; margin-top: 10px; }
+            #message-area { font-size: 1.1em; }
+            
+            /* Smaller Cards for Mobile (Adjusted for better fit) */
+            .card-slots { gap: 5px; }
+            .card-slot {
+                width: 90px; /* Reduced card size */
+                height: 130px;
+                border-width: 2px;
+            }
+
+            /* Stack Controls Vertically */
+            #control-buttons {
+                flex-direction: column;
+                gap: 15px;
+                min-height: 150px;
+                width: 100%;
+            }
+
+            /* Move Modifiers above Action Buttons */
+            #modifier-icons-wrapper {
+                order: 1; /* Move to top */
+                margin: 0;
+                gap: 8px;
+            }
+
+            .mod-icon {
+                width: 45px; /* Smaller Icons */
+                height: 45px;
+                line-height: 40px;
+                font-size: 1.2em !important;
+            }
+
+            /* Center and space out action buttons */
+            .game-buttons-group {
+                order: 2; /* Move below icons */
+                width: 90%;
+                justify-content: space-around;
+                gap: 5px;
+            }
+
+            .game-button {
+                padding: 10px 15px;
+                font-size: 1em;
+                flex-grow: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <audio id="sound-button-click" src="SOUNDS/DEAL.mp3" preload="auto"></audio>
+    <audio id="sound-hit-button-click" src="SOUNDS/call.mp3" preload="auto"></audio>
+    <audio id="sound-hold-button-click" src="SOUNDS/call.mp3" preload="auto"></audio>
+    <audio id="sound-new-deal-button-click" src="SOUNDS/call.mp3" preload="auto"></audio>
+    <audio id="sound-player-wins" src="SOUNDS/WINS.mp3" preload="auto"></audio>
+    <audio id="sound-dealer-wins" src="SOUNDS/fiches_04.wav" preload="auto"></audio>
+    <audio id="sound-dealing-cards" src="SOUNDS/DEAL.mp3" preload="auto"></audio>
+    <audio id="sound-icon-click" src="SOUNDS/HELD.mp3" preload="auto"></audio>
+
+
+    <div id="game-container">
+        <h1 id="game-result-message"></h1> <h1>Four Way Blackjack</h1>
+
+        <div id="stats-bar-wrapper">
+            <div id="stats-bar">
+                <div class="stat-box">Credits: <span id="credits-stat">500</span></div>
+                <div class="stat-box">Current Bet: <span id="bet-stat">10</span></div>
+                <div class="stat-box">Last Win: <span id="winnings-stat">0</span></div>
+            </div>
+            <button id="mute-button" onclick="toggleMute()">🔊 MUTE</button>
+        </div>
+
+        <div id="message-area">Click DEAL to start.</div>
+
+        <div id="dealer-area" class="hand-container">
+            <h2>Dealer (<span id="dealer-score">0</span>)</h2>
+            <div id="dealer-cards" class="card-slots">
+                </div>
+        </div>
+
+        <div id="player-area" class="hand-container">
+            <h2>Player (<span id="player-score">0</span>)</h2>
+            <div id="player-cards" class="card-slots">
+                </div>
+        </div>
+
+        <div id="control-buttons">
+            <div id="modifier-icons-wrapper">
+                </div>
+            <div class="game-buttons-group">
+                <button id="deal-button" class="game-button" onclick="game.startRound()">DEAL</button>
+                <button id="hit-button" class="game-button" onclick="game.hit()" disabled>HIT</button>
+                <button id="stand-button" class="game-button" onclick="game.stand()" disabled>STAND</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // Global mute state
+    let isMuted = false; 
+    
+    // --- SOUND HELPER FUNCTION (FINAL FIX) ---
+    function playSound(elementId) {
+        if (isMuted) return;
+
+        const audio = document.getElementById(elementId);
+        if (audio && audio.src) {
+            // Use cloneNode for robust and quick playback (avoids element busy lock)
+            const clone = audio.cloneNode(true); 
+            clone.currentTime = 0; // Start from beginning
+            clone.volume = 0.5; 
+            clone.play().catch(e => console.warn(`Audio play failed for ${elementId}:`, e));
+        }
+    }
+
+    // --- MUTE TOGGLE FUNCTION ---
+    function toggleMute() {
+        isMuted = !isMuted;
+        const muteButton = document.getElementById('mute-button');
+        muteButton.textContent = isMuted ? '🔇 UNMUTE' : '🔊 MUTE';
+
+        // Play a sound when UNMUTED to ensure audio context is active
+        if (!isMuted) {
+            const quietSound = document.getElementById('sound-hold-button-click').cloneNode(true);
+            quietSound.volume = 0.1;
+            quietSound.play().catch(e => console.log("Mute toggle play failed:", e));
+        }
+    }
+
+    // --- 1. Game Constants & Setup ---
+    const RANKS_NUM = ['2', '3', '4', '5', '6', '7', '8', '9', '10'];
+    const RANKS_FACE = ['JACK', 'QUEEN', 'KING', 'ACE'];
+    const ALL_RANKS = [...RANKS_NUM, ...RANKS_FACE];
+    const SUITS = ['SPADES', 'HEARTS', 'DIAMONDS', 'CLUBS'];
+    const CARD_IMAGE_PATH = 'cards/';
+    const STARTING_CREDITS = 500;
+    const INITIAL_BET = 10;
+    const MODIFIER_COST = 1; 
+    const TOTAL_BET_COST = INITIAL_BET + MODIFIER_COST; // 11
+
+    // Helper to map card value to its display rank (used for image path and logic)
+    function getValueToRank(value) {
+        if (value === 11) return 'ACE';
+        if (value === 10) return 'KING'; 
+        if (value === 14) return 'ACE'; 
+        if (value === 13) return 'KING';
+        if (value === 12) return 'QUEEN';
+        if (value < 2) return '2'; 
+        return String(value);
+    }
+    
+    // --- 2. Card Class ---
+    class Card {
+        constructor(rank, suit, value) {
+            this.rank = rank;
+            this.suit = suit;
+            this.value = value;
+        }
+
+        getImagePath() {
+            // Fix: Use single letter for J, Q, K and 'A' for ACE in file path
+            let rankForPath = this.rank;
+            if (this.rank === 'ACE') {
+                rankForPath = 'A';
+            } else if (['KING', 'QUEEN', 'JACK'].includes(this.rank)) {
+                rankForPath = this.rank.charAt(0);
+            } else if (this.value >= 11 && this.rank.length > 2) {
+                rankForPath = this.rank.charAt(0); 
+            }
+            return `${CARD_IMAGE_PATH}${rankForPath.toUpperCase()}_OF_${this.suit.toUpperCase()}.png`;
+        }
+
+        toString() {
+            return `${this.rank} of ${this.suit}`;
+        }
+    }
+
+    // --- 3. Deck Class ---
+    class Deck {
+        constructor() {
+            this.cards = [];
+            this.reset();
+        }
+
+        reset() {
+            this.cards = [];
+            const standardRanks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'JACK', 'QUEEN', 'KING', 'ACE'];
+            
+            for (const suit of SUITS) {
+                for (const rank of standardRanks) {
+                    let value;
+                    if (rank === 'ACE') value = 11;
+                    else if (['KING', 'QUEEN', 'JACK'].includes(rank)) value = 10;
+                    else value = parseInt(rank);
+                    
+                    this.cards.push(new Card(rank, suit, value));
+                }
+            }
+            this.shuffle();
+        }
+
+        shuffle() {
+            for (let i = 0; i < this.cards.length; i++) {
+                const j = Math.floor(Math.random() * this.cards.length);
+                [this.cards[i], this.cards[j]] = [this.cards[j], this.cards[i]];
+            }
+        }
+
+        dealCard() {
+            if (this.cards.length > 0) {
+                return this.cards.pop();
+            }
+            this.reset();
+            return this.cards.pop();
+        }
+    }
+
+    // --- 4. Game Logic ---
+    class BlackjackGame {
+        constructor() {
+            this.deck = new Deck();
+            this.playerHand = [];
+            this.dealerHand = [];
+            this.credits = STARTING_CREDITS;
+            this.currentBet = INITIAL_BET;
+            this.lastWinnings = 0;
+            this.gameState = 'READY'; // READY, PLAYING, DEALING, DEALER_TURN, ENDED
+            this.modifierUsed = false;
+            this.gameResultEl = document.getElementById('game-result-message'); 
+
+            this.updateUI();
+        }
+
+        // --- Core Utility Functions ---
+
+        getHandScore(hand) {
+            let score = hand.reduce((sum, card) => sum + card.value, 0);
+            let aceCount = hand.filter(card => card.rank === 'ACE' || (card.value === 11 && !['JACK', 'QUEEN', 'KING'].includes(card.rank))).length;
+
+            while (score > 21 && aceCount > 0) {
+                score -= 10;
+                aceCount--;
+            }
+            return score;
+        }
+
+        updateStats(message) {
+            document.getElementById('credits-stat').textContent = this.credits;
+            document.getElementById('bet-stat').textContent = TOTAL_BET_COST;
+            document.getElementById('winnings-stat').textContent = this.lastWinnings;
+            document.getElementById('message-area').textContent = message;
+        }
+
+        // --- UI Rendering ---
+
+        renderHand(hand, elementId, hideSecondCard = false) { 
+            // FIX: Get the card slots container directly using its specific ID
+            const cardSlotsContainer = document.getElementById(elementId.replace('-area', '-cards'));
+            let existingCards = cardSlotsContainer.querySelectorAll('.card-slot');
+            
+            existingCards.forEach(card => card.remove());
+
+            hand.forEach((card, index) => {
+                const slot = document.createElement('div');
+                slot.className = 'card-slot';
+                
+                // --- FIX: Dealer Card Visibility (INDEX 1 is HIDDEN) and Logo Card Back ---
+                // Hide the card ONLY if it's the DEALER's hand, the SECOND card (index === 1), AND the game is NOT over
+                if (elementId === 'dealer-area' && index === 1 && hand.length > 1 && hideSecondCard) {
+                    slot.classList.add('card-back-logo');
+                    slot.style.backgroundColor = 'transparent'; 
+                    slot.style.color = 'transparent';
+                    slot.textContent = ''; 
+                } else {
+                    // Show the front of the card (Applies to Dealer's 1st card and all Player cards)
+                    slot.style.backgroundImage = `url('${card.getImagePath()}')`;
+                    slot.classList.remove('card-back-logo'); 
+                }
+                
+                // Remove the yellow highlight from dealer cards
+                if (elementId === 'dealer-area') {
+                    slot.style.border = '3px solid #000'; 
+                }
+
+                if (index === 1 && elementId === 'player-area' && this.modifierUsed) {
+                     slot.style.border = '4px dashed #00ff00'; 
+                }
+
+                cardSlotsContainer.appendChild(slot);
+            });
+        }
+
+        updateUI(message = '') {
+            const playerScore = this.getHandScore(this.playerHand);
+            const dealerScore = this.getHandScore(this.dealerHand);
+            // Hide the SECOND card when game is PLAYING or READY or DEALING
+            const hideDealerSecond = this.gameState === 'PLAYING' || this.gameState === 'READY' || this.gameState === 'DEALING';
+            
+            // 1. Render Cards
+            this.renderHand(this.playerHand, 'player-area', false);
+            this.renderHand(this.dealerHand, 'dealer-area', hideDealerSecond); 
+
+            // 2. Update Scores
+            document.getElementById('player-score').textContent = playerScore;
+            
+            // Show the value of the *FIRST* card only when the second is hidden (if dealer has at least 1 card)
+            if (hideDealerSecond && this.dealerHand.length > 0) {
+                // The dealer's first card is at index 0
+                document.getElementById('dealer-score').textContent = this.dealerHand[0].value; 
+            } else {
+                document.getElementById('dealer-score').textContent = dealerScore;
+            }
+            
+            // 3. Update Stats
+            this.updateStats(message);
+
+            // 4. Update Buttons
+            document.getElementById('deal-button').disabled = this.gameState === 'PLAYING' || this.gameState === 'DEALER_TURN' || this.gameState === 'DEALING';
+            document.getElementById('hit-button').disabled = this.gameState !== 'PLAYING';
+            document.getElementById('stand-button').disabled = this.gameState !== 'PLAYING';
+            
+            // 6. Render Modifiers
+            this.renderModifiers();
+            
+            // 7. Hide result message by default (shown only at endRound)
+            if (this.gameState !== 'ENDED') {
+                 this.gameResultEl.classList.remove('visible');
+                 this.gameResultEl.textContent = '';
+            }
+        }
+        
+        // --- Modifier Icon Logic ---
+        renderModifiers() {
+            const wrapper = document.getElementById('modifier-icons-wrapper');
+            
+            wrapper.innerHTML = '';
+            wrapper.style.display = 'none';
+
+            if (this.gameState === 'PLAYING' && !this.modifierUsed && this.playerHand.length === 2) {
+                
+                wrapper.style.display = 'flex';
+
+                const icons = [
+                    { symbol: '&#9650;', action: 'add', title: `Upgrade Card Value (+1). Cost: ${MODIFIER_COST}`, color: '#2196f3' }, 
+                    { symbol: '&#9660;', action: 'subtract', title: `Downgrade Card Value (-1). Cost: ${MODIFIER_COST}`, color: '#9c27b0' }, 
+                    { symbol: 'X2', action: 'multiply', title: `Double Card Value (X2). Cost: ${MODIFIER_COST}`, color: '#F44336' }, 
+                    { symbol: '/2', action: 'divide', title: `Halve Card Value (/2). Cost: ${MODIFIER_COST}`, color: '#FFC107' } 
+                ];
+                
+                const secondCardValue = this.playerHand[1].value;
+
+                icons.forEach(icon => {
+                    const button = document.createElement('button');
+                    button.className = 'mod-icon';
+                    button.setAttribute('data-action', icon.action);
+                    button.innerHTML = icon.symbol;
+                    button.title = icon.title;
+                    button.style.backgroundColor = icon.color;
+                    
+                    let isDisabled = false;
+                    
+                    if (this.credits < MODIFIER_COST) {
+                         isDisabled = true;
+                    }
+                    
+                    if (icon.action === 'divide' && secondCardValue % 2 !== 0) {
+                        isDisabled = true; 
+                    }
+                    
+                    if (icon.action === 'subtract' && secondCardValue <= 2) {
+                        isDisabled = true; // Cannot drop below 2
+                    }
+                    
+                    const newScore = this.getFutureScore(icon.action);
+                    if (newScore > 21) {
+                         isDisabled = true; 
+                    }
+                    
+                    button.disabled = isDisabled;
+                    button.onclick = (e) => {
+                         e.stopPropagation();
+                         playSound('sound-icon-click');
+                         this.applyModifier(icon.action);
+                    };
+                    wrapper.appendChild(button);
+                });
+            }
+        }
+        
+        getFutureScore(action) {
+            const tempHand = JSON.parse(JSON.stringify(this.playerHand)); 
+            const card = tempHand[1]; 
+            let tempValue = card.value;
+            
+            if (action === 'add') {
+                tempValue += 1;
+            } else if (action === 'subtract') {
+                tempValue -= 1;
+            } else if (action === 'multiply') {
+                tempValue *= 2;
+            } else if (action === 'divide') {
+                if (tempValue % 2 !== 0) return 99; 
+                tempValue /= 2;
+            }
+            
+            card.value = tempValue; 
+            
+            return this.getHandScore(tempHand); 
+        }
+
+        
+        applyModifier(action) {
+            if (this.modifierUsed || this.gameState !== 'PLAYING' || this.playerHand.length < 2) return;
+            
+            if (this.getFutureScore(action) > 21) {
+                 this.updateUI("Cannot use this modifier; it would cause a BUST (>21).");
+                 return;
+            }
+
+            if (this.credits < MODIFIER_COST) {
+                this.updateUI(`Not enough credits to use a Modifier (Cost: ${MODIFIER_COST})`);
+                return;
+            }
+
+            const card = this.playerHand[1]; 
+            let newRankValue = card.value;
+            let originalValue = card.value;
+            
+            if (action === 'add') {
+                newRankValue += 1;
+            } else if (action === 'subtract') {
+                if (newRankValue <= 2) return; 
+                newRankValue -= 1;
+            } else if (action === 'multiply') {
+                newRankValue *= 2;
+            } else if (action === 'divide') {
+                if (newRankValue % 2 !== 0) {
+                    this.updateUI("Error: Card value must be even to use /2.");
+                    return;
+                }
+                newRankValue /= 2;
+            }
+            
+            card.value = newRankValue; 
+            card.rank = getValueToRank(newRankValue); 
+            
+            this.credits -= MODIFIER_COST;
+            this.currentBet += MODIFIER_COST; 
+            this.modifierUsed = true;
+            
+            this.updateUI(`Modifier used! Card changed to ${card.rank}. Value: ${originalValue} -> ${card.value}. Cost: ${MODIFIER_COST} credits.`);
+            
+            this.checkBustOrBlackjack();
+
+            this.updateUI(document.getElementById('message-area').textContent); 
+        }
+
+        // --- Game Flow Functions (With 1 Second Delay) ---
+
+        dealCardsSequentially() {
+            let currentStep = 0;
+            const self = this;
+            const delay = 1000; // 1 second delay
+
+            // Steps: P1, D1, P2, D2
+            const steps = [
+                () => self.playerHand.push(self.deck.dealCard()),
+                () => self.dealerHand.push(self.deck.dealCard()),
+                () => self.playerHand.push(self.deck.dealCard()),
+                () => self.dealerHand.push(self.deck.dealCard()),
+            ];
+
+            function dealNext() {
+                if (currentStep >= steps.length) {
+                    // Finished initial deal
+                    self.gameState = 'PLAYING';
+                    
+                    const playerScore = self.getHandScore(self.playerHand);
+                    if (playerScore === 21) {
+                        self.updateUI("BLACKJACK! Player has 21. Dealer reveals cards...");
+                        self.stand(); 
+                        return;
+                    }
+
+                    self.updateUI("Use a modifier or decide: HIT or STAND.");
+                    return;
+                }
+
+                steps[currentStep]();
+                self.updateUI("Dealing cards..."); 
+                playSound('sound-button-click'); 
+                currentStep++;
+
+                setTimeout(dealNext, delay);
+            }
+
+            dealNext();
+        }
+        
+        startRound() {
+            const totalBet = INITIAL_BET;
+            
+            if (this.credits < totalBet) {
+                this.updateUI("Not enough credits to place a bet (Min Bet: 10)!");
+                playSound('sound-new-deal-button-click'); // Play new deal click sound on error
+                return;
+            }
+
+            this.deck.reset();
+            this.playerHand = [];
+            this.dealerHand = [];
+            this.lastWinnings = 0;
+            this.modifierUsed = false;
+            this.currentBet = INITIAL_BET; 
+
+            this.credits -= TOTAL_BET_COST; // Deduct total cost initially (11)
+            this.gameState = 'DEALING'; // Lock controls during animation
+            
+            playSound('sound-button-click'); // Play deal click sound
+            this.updateUI("Dealing cards...");
+            this.dealCardsSequentially(); // Start the animated deal
+        }
+        
+        checkBustOrBlackjack() {
+            const playerScore = this.getHandScore(this.playerHand);
+            
+            if (playerScore === 21) {
+                this.gameState = 'DEALER_TURN';
+                this.stand(); 
+            } else if (playerScore > 21) {
+                this.gameState = 'ENDED';
+                this.endRound(); 
+            }
+        }
+
+        hit() {
+            if (this.gameState !== 'PLAYING') return;
+
+            playSound('sound-button-click'); // Play HIT click sound
+            this.playerHand.push(this.deck.dealCard());
+            this.modifierUsed = true; 
+            this.updateUI("You HIT.");
+            
+            this.checkBustOrBlackjack();
+            
+            if (this.gameState === 'PLAYING') {
+                 this.updateUI("Decide: HIT or STAND.");
+            }
+        }
+
+        stand() {
+            if (this.gameState !== 'PLAYING' && this.gameState !== 'DEALER_TURN') return;
+            this.gameState = 'DEALER_TURN';
+            this.modifierUsed = true; 
+
+            this.updateUI("Player STANDS. Dealer's turn...");
+
+            const self = this;
+            const delay = 1000;
+
+            function dealerHit() {
+                // If dealer score is less than 17 AND the game is still in dealer turn
+                if (self.getHandScore(self.dealerHand) < 17 && self.gameState === 'DEALER_TURN') {
+                    self.dealerHand.push(self.deck.dealCard());
+                    self.updateUI("Dealer hits...");
+                    playSound('sound-button-click'); // Play dealing sound for each card
+                    
+                    // Recursive call with delay
+                    setTimeout(dealerHit, delay); 
+                } else {
+                    // Dealer finished drawing or score is 17+
+                    self.endRound();
+                }
+            }
+            
+            // Start dealer's drawing sequence after a short delay to reveal the hidden card
+            setTimeout(dealerHit, delay);
+        }
+
+        endRound() {
+            this.gameState = 'ENDED';
+            const playerScore = this.getHandScore(this.playerHand);
+            const dealerScore = this.getHandScore(this.dealerHand);
+            
+            let message = '';
+            let winnings = 0; 
+            let totalBetDeducted = TOTAL_BET_COST; // Always 11 deducted
+            let netProfit = 0; 
+            const baseProfitRegular = 10; 
+            const blackjackProfit = 15; 
+
+            if (playerScore > 21) {
+                // BUST: Loss of total bet (11)
+                message = `BUST! You went over 21 (${playerScore}). You lose ${totalBetDeducted} credits.`;
+                winnings = 0;
+                this.gameResultEl.textContent = "DEALER WINS";
+                this.gameResultEl.classList.add('visible');
+                playSound('sound-dealer-wins');
+            } 
+            else if (dealerScore > 21) {
+                // DEALER BUST: Total Return 20 (10 Base Bet + 10 Base Profit). Cost (1) is lost.
+                const totalReturn = INITIAL_BET + baseProfitRegular; // 20
+                winnings = totalReturn;
+                netProfit = baseProfitRegular - MODIFIER_COST; // 10 - 1 = 9
+                
+                message = `DEALER BUSTS! You Win ${netProfit} credits. Total return: ${totalReturn}`;
+                this.gameResultEl.textContent = "PLAYER WINS";
+                this.gameResultEl.classList.add('visible');
+                playSound('sound-player-wins');
+            } 
+            else if (playerScore === 21 && this.playerHand.length === 2 && !this.modifierUsed) {
+                // BLACKJACK: Total Return 25 (10 Base Bet + 15 Blackjack Profit). Cost (1) is lost.
+                const totalReturn = INITIAL_BET + blackjackProfit; // 25
+                
+                winnings = totalReturn;
+                netProfit = blackjackProfit - MODIFIER_COST; // 15 - 1 = 14
+
+                message = `BLACKJACK! You Win ${netProfit.toFixed(1)} credits. Total return: ${totalReturn.toFixed(1)}`;
+                this.gameResultEl.textContent = "PLAYER WINS";
+                this.gameResultEl.classList.add('visible');
+                playSound('sound-player-wins');
+            }
+            else if (playerScore === dealerScore) {
+                // Push: returns total bet (11)
+                winnings = totalBetDeducted; 
+                netProfit = 0;
+                message = `PUSH! It's a tie (${playerScore}). Your bet is returned.`;
+                this.gameResultEl.textContent = "PUSH";
+                this.gameResultEl.classList.add('visible');
+            } 
+            else if (playerScore > dealerScore) {
+                // Regular win: Total Return 20 (10 Base Bet + 10 Base Profit). Cost (1) is lost.
+                const totalReturn = INITIAL_BET + baseProfitRegular; // 20
+                
+                winnings = totalReturn;
+                netProfit = baseProfitRegular - MODIFIER_COST; // 10 - 1 = 9
+
+                message = `YOU WIN! Your ${playerScore} beats the dealer's ${dealerScore}. Total return: ${totalReturn}`;
+                this.gameResultEl.textContent = "PLAYER WINS";
+                this.gameResultEl.classList.add('visible');
+                playSound('sound-player-wins');
+            } 
+            else {
+                winnings = 0;
+                netProfit = -totalBetDeducted;
+                message = `DEALER WINS! Dealer's ${dealerScore} beats your ${playerScore}. You lose ${totalBetDeducted} credits.`;
+                this.gameResultEl.textContent = "DEALER WINS";
+                this.gameResultEl.classList.add('visible');
+                playSound('sound-dealer-wins');
+            }
+
+            this.credits += winnings;
+            this.lastWinnings = netProfit > 0 ? parseFloat(netProfit.toFixed(1)) : 0; 
+
+            this.updateUI(message + " Click DEAL to start a new round.");
+            document.getElementById('deal-button').textContent = 'NEW DEAL';
+            document.getElementById('deal-button').disabled = false;
+            
+            this.renderHand(this.dealerHand, 'dealer-area', false);
+            document.getElementById('dealer-score').textContent = dealerScore;
+        }
+    }
+
+    // --- Initialization ---
+    const game = new BlackjackGame();
+</script>
+</body>
+</html>
